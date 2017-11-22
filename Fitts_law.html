@@ -1,0 +1,227 @@
+<html>
+<head>
+<script src="https://d3js.org/d3.v4.min.js"></script>
+</head>
+<body>
+<h1 style="font-size:20px" align="center">Fitts Law Experiment</h1>
+<p>The experimental apparatus allows a user to go through 6 rounds of 15 taps each, with 2 different widths and 3 different distances.When the circle highlighted in black is hit the distance between consecutive click and movement time is calculated.</p>
+<p>Keep clicking on the black circle.</p>
+<p>
+<script>
+	var final_array=[];
+	var counter=0;
+	var x_coordinates=[];
+	var y_coordinates=[];
+	var timeArray=[];
+	var totalTime=[];
+	var distance=[];
+	var width_array=[];
+	var amplitude_array=[];
+	var totalDistance=0;
+	var color;
+	var dist=0;
+	var width=0;
+	var dataVals=[[0.698132,"0"],[1.39626,"7"],[2.0944,"5"],[2.79253,"3"],[3.49066,"1"],[4.18879,"8"],[4.88692,"6"],[5.58505,"4"],[6.28319,"2"]];
+	var start=0,i=0,j=0,end=0,flag=0,t=0; //keep track of final values array counter
+	var index_of_difficulty=[];
+	var throughput=[];
+	var movement_time=[];
+	var plot_array=[];
+	//Page layout
+	var page=d3.select("body").append("svg");
+		page.attr("width",1200).attr("height",600);
+		
+	
+	var width_1=15;
+	var width_2=20;
+	var distance_1=50;
+	var distance_2=100;
+	var distance_3=150;
+	movement_time=[0,0,0,0,0,0];
+	
+	function createCircle(width,dist,i,j){
+		start=i;
+		end=j;
+	//initialize the circle
+	var circles=page.selectAll("circle")
+		.data(dataVals)
+		.enter()
+		.append("circle");
+	
+	//create the circle by giving it its attribute value
+	var circleGroup=circles.attr("cx", function (d,i) { return 600+ dist* Math.cos(d[0]);})
+			.attr("cy", function (d,i) { return 200+ dist* Math.sin(d[0]);})			
+			.attr("r", width)
+			.attr("id",function (d,i) {return d[1];})
+			.style("fill", function(d,i){
+				if(d[1]==start%9)
+					color="black";
+				else
+					color="blue";
+				return color});
+				
+	for(k=start;k<end;k++)
+	{
+		width_array[k]=width;
+		amplitude_array[k]=dist;
+	}
+		circleGroup.on("click",clickCircle);
+	}
+	
+	function clickCircle(){
+	
+	var previousElement = d3.select(this);
+	var elementColor = previousElement.style("fill");
+	//If clicked circle is black
+	if ( elementColor == 'black'){
+		if(start<=end){
+				var coordinates = [0,0];
+				coordinates = d3.mouse(this);
+				timeArray[start]=Date.now();
+				var x = coordinates[0];
+				var y = coordinates[1];	
+				x_coordinates[start]=x;
+				y_coordinates[start]=y;
+			}
+			start++;
+			counter++;
+			allcircles=page.selectAll("circle");
+			allcircles.each(function(d,i)
+			{
+				var tempId=this.getAttribute("id");
+				var indexId = start % 9;
+				indexId = indexId.toString();
+				if(tempId==indexId)
+					this.style.fill="black";
+				else
+					this.style.fill="blue";
+			}	
+			)
+	}
+			calculate_time_dist(end-15,end);
+	}
+		function calculate_time_dist(start,end){
+	
+			for(var i=start;i<=end;i++)
+					{ 
+					    var xSquare=(x_coordinates[i+1]-x_coordinates[i])*(x_coordinates[i+1]-x_coordinates[i]);
+						var ySquare=(y_coordinates[i+1]-y_coordinates[i])*(y_coordinates[i+1]-y_coordinates[i]);
+						distance[i]= Math.sqrt(xSquare+ySquare);
+						totalTime[i]=timeArray[i+1]-timeArray[i];
+						if(isNaN(totalTime[i])==true)
+							{
+							totalTime[i]=0;
+							}
+						
+					}
+			if((counter-1)==end){		
+			flag++;
+			page.selectAll("circle").remove();
+			if(flag ==1){
+				cal_variables(width_1,distance_1,0,15);
+				createCircle(width_1,distance_2,15,30);
+		}
+			if(flag==2){
+			cal_variables(width_1,distance_2,15,30);
+			createCircle(width_1,distance_3,30,45);
+			}
+			if(flag==3)	{
+			cal_variables(width_1,distance_3,30,45);
+			createCircle(width_2,distance_1,45,60);	
+			}
+			if(flag==4)	{
+			cal_variables(width_2,distance_1,45,60);
+			createCircle(width_2,distance_2,60,75);
+			}
+			if(flag==5){
+			cal_variables(width_2,distance_2,60,75);
+			createCircle(width_2,distance_3,75,90);
+			}
+			if(flag==6)
+			{
+			cal_variables(width_2,distance_3,75,90);
+			generate_data();
+			variables_data();
+			}
+		}
+	}
+	
+		if(flag ==0){
+		createCircle(width_1,distance_1,0,15);
+		
+		}	
+	
+	
+	function generate_data()
+	{
+		var c=0;
+		for(c=0;c<distance.length;c++)
+		{
+		final_array[c] = "\r\n"+width_array[c] + "," + amplitude_array[c] + "," + distance[c] + "," + totalTime[c];
+		}
+	}
+	
+		function download_csv() {
+			var csvRows = [];
+	csv= ['\r\n','Width','Distance','Total Distance','Time'];
+	csvRows.push(csv.join(','));
+	csvRows.push(final_array.join(','));   // unquoted CSV row
+
+	var csvString = csvRows.join('\r\n');
+	 var a = document.createElement('a');
+    a.href = 'data:attachment/csv' + csvString;
+    a.target   ='_blank';
+	a.download = 'dataset.csv,' + encodeURIComponent(csvString); ;
+	a.innerHTML = "Click me to download the file.";
+	document.body.appendChild(a);
+}
+	
+	function cal_variables(width,dist,start,end){
+				for(i=start;i<end;i++){
+				movement_time[t]=movement_time[t]+totalTime[i];
+				}
+				index_of_difficulty[t]=Math.log2((dist/width) +1);
+				movement_time[t] = movement_time[t]/15;
+				throughput[t]=(index_of_difficulty[t]/movement_time[t])*1000;
+				t++;
+	}
+	
+	function variables_data()
+	{
+		var c=0;
+		for(c=0;c<6;c++)
+		{
+		plot_array[c] = "\r\n"+index_of_difficulty[c] + "," + movement_time[c] + "," + throughput[c];
+		}
+	}
+	
+	function download_variables_data() {
+			var csvRows = [];
+	csv= ['\r\n','Index of Difficulty','Movement Time','Throughput'];
+	csvRows.push(csv.join(','));
+	csvRows.push(plot_array.join(','));   // unquoted CSV row
+	var csvString = csvRows.join('\r\n');
+    var a = document.createElement('a');
+    a.href = 'data:attachment/csv' + csvString;
+    a.target   ='_blank';
+	a.download = 'variables_file.csv,' + encodeURIComponent(csvString); ;
+	a.innerHTML = "Click me to download the file for plotting.";
+	document.body.appendChild(a);
+}
+
+</script>
+<div>
+<button onclick='download_csv()'>Download dataset<button>
+</div>
+<div>
+<button onclick='download_variables_data()'>Download variables dataset </button>
+</div>
+</body>
+</html>
+
+
+
+
+
+
+
